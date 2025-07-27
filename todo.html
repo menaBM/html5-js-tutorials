@@ -21,6 +21,7 @@
         <div class="col-md-4">
           <form>
             <input type="text" class="form-control" id="todoTitle" placeholder="Todo title...">
+            <input type="date" class="form-control mt-3" id="todoDate" placeholder="Todo date...">
             <textarea rows="3" class="form-control mt-3" id="todoDesc" placeholder="Todo description..."></textarea>
             <button onclick="newTodo()" class="addBtn btn btn-sm btn-primary form-control mt-3">Add</span>
           </form>
@@ -41,6 +42,7 @@
           </div>
           <div class="modal-body">
             <p>Title: <span id="todo-title"></span></p>
+            <p>Date: <span id="todo-date"></span></p>
             <p>Description: <span id="todo-description"></span></p>
           </div>
           <div class="modal-footer">
@@ -86,6 +88,7 @@
           var currentTodo = getTodo(todoID);
           // console.log(currentTodo);
           document.getElementById("todo-title").innerHTML = currentTodo.title;
+          document.getElementById("todo-date").innerHTML = currentTodo.date
           document.getElementById("todo-description").innerHTML = currentTodo.description;
         });
       });
@@ -114,8 +117,9 @@
       if (!todoTitle && !todoID) {
         todoTitle = document.getElementById("todoTitle").value;
         todoDesc = document.getElementById("todoDesc").value;
+        todoDate = document.getElementById("todoDate").value;
         if (todoTitle) {
-          var todoID = storeTodoLocal(todoTitle, todoDesc);
+          var todoID = storeTodoLocal(todoTitle, todoDesc, todoDate);
         }
       }
       if (todoTitle) {
@@ -130,7 +134,7 @@
       }
     }
 
-    function storeTodoLocal(todoTitle, todoDesc) {
+    function storeTodoLocal(todoTitle, todoDesc, todoDate) {
       
       // retrieve and parse existing JSON from localstorage
       var json_temp = JSON.parse( localStorage.getItem('json_data') );
@@ -146,6 +150,7 @@
       json_temp.push({
         "id": todoID,
         "title": todoTitle,
+        "date": todoDate,
         "description": todoDesc,
         "completed": false
       });
