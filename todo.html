@@ -14,14 +14,18 @@
       
       <div class="row mt-4">
         <div class="col-md-8">
-          <ul id="todo-list">
+          <!-- use ordered list to indicate there is a priority order -->
+          <ol id="todo-list">
             
-          </ul>
+          </ol>
         </div>
         <div class="col-md-4">
           <form>
             <input type="text" class="form-control" id="todoTitle" placeholder="Todo title...">
+            <!-- add input for date -->
             <input type="date" class="form-control mt-3" id="todoDate" placeholder="Todo date...">
+            <!-- Add input for priority, don't allow invalid numbers eg. negative, 0 -->
+            <input type="number" class="form-control mt-3" id="todoPriority" placeholder="Todo priority" min="1"> 
             <textarea rows="3" class="form-control mt-3" id="todoDesc" placeholder="Todo description..."></textarea>
             <button onclick="newTodo()" class="addBtn btn btn-sm btn-primary form-control mt-3">Add</span>
           </form>
@@ -41,13 +45,17 @@
             </button>
           </div>
           <div class="modal-body">
+            <!-- use a form as we are inputting data -->
             <form>
               <input type="text" class="form-control" id="updateTodoTitle" placeholder="Todo title...">
+              <!-- add new fields to the modal -->
               <input type="date" class="form-control mt-3" id="updateTodoDate" placeholder="Todo date...">
+              <input type="number" class="form-control mt-3" id="updateTodoPriority" placeholder="Todo priority" >
               <textarea rows="3" class="form-control mt-3" id="updateTodoDesc" placeholder="Todo description..."></textarea>
           </form>
           </div>
           <div class="modal-footer">
+            <!-- give button an id so that I can get the element to add the onclick to it -->
             <button id="modal-save-button" type="button" class="btn btn-primary">Save changes</button>
             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
           </div>
@@ -68,7 +76,8 @@
     if (json_data) {
       json_data.forEach(element => {
         if (element) {
-          newTodo(element.title, element.id);
+          // pass the priority so that the elements can be inserted in the right order
+          newTodo(element.title, element.description, element.id, element.priority);
         }
       });
     }
@@ -89,8 +98,12 @@
           var todoID = this.parentNode.getAttribute('data-id');
           var currentTodo = getTodo(todoID);
           document.getElementById("updateTodoTitle").value = currentTodo.title;
+          //  add the values of the new elements to the modal
           document.getElementById("updateTodoDate").value = currentTodo.date
+          document.getElementById("updateTodoPriority").value = currentTodo.priority
           document.getElementById("updateTodoDesc").value = currentTodo.description;
+          // set the onclick here so that the updateTodo function will be called with the right ID
+          // to fix the bug
           document.getElementById("modal-save-button").onclick = () => updateTodo(todoID)
         });
       });
@@ -115,44 +128,74 @@
 
     }
 
-    function newTodo(todoTitle, todoID) {
+    function newTodo(todoTitle, todoDesc, todoID, todoPriority) {
       if (!todoTitle && !todoID) {
         todoTitle = document.getElementById("todoTitle").value;
         todoDesc = document.getElementById("todoDesc").value;
         todoDate = document.getElementById("todoDate").value;
+        todoPriority = document.getElementById("todoPriority").value;
         if (todoTitle) {
-          var todoID = storeTodoLocal(todoTitle, todoDesc, todoDate);
+          // store the values of the new fields in local storage
+          var todoID = storeTodoLocal(todoTitle, todoDesc, todoDate, todoPriority);
         }
       }
       if (todoTitle) {
-        // console.log(todoTitle);
         var todoHTML = '<a href="#" data-toggle="modal" data-target="#todoModal">' + todoTitle + '</a> <a href="#" class="btn btn-sm btn-danger m-1 delete">Delete</a>';
         var todoList = document.getElementById("todo-list");
         var newTodoElement = document.createElement("li");
         newTodoElement.setAttribute("data-id", todoID);
         newTodoElement.innerHTML = todoHTML;
+        if ( todoPriority ) {
+          // if the todo has a priority value then add it to the dataset
+          newTodoElement.setAttribute("data-priority", todoPriority)
+          for (todo of document.querySelectorAll("li")) {
+            // go through the already added todos until one with no priority set or a larger value for priority is found
+            if (!todo.getAttribute("data-priority") || parseInt(todo.getAttribute("data-priority")) > todoPriority){
+              // the new todo is more important than the found existing todo so insert it before
+              todoList.insertBefore(newTodoElement, todo)
+              registerEventListeners();
+              return;
+            }
+          }
+        }
+        // there are currently no todos on the page or this todo is the least important
+        // so add it to the end
         todoList.appendChild(newTodoElement);
         registerEventListeners();
       }
     }
 
+    // function that is called when the modal save changes button is pressed
     function updateTodo(todoID) {
+      // get the values of the fields in the modal
       let todoTitle = document.getElementById("updateTodoTitle").value
       let todoDate = document.getElementById("updateTodoDate").value
+      let todoPriority = document.getElementById("updateTodoPriority").value
       let todoDesc = document.getElementById("updateTodoDesc").value
+      // get the data from local storage
       let json_temp = JSON.parse(localStorage.getItem('json_data'))
+      // overwrite the stored data for this todo with the data from the modal
       json_temp[todoID].title = todoTitle
       json_temp[todoID].description = todoDesc
       json_temp[todoID].date = todoDate
+      json_temp[todoID].priority = todoPriority
+      // save the updated data in local storage
       localStorage.setItem('json_data', 
         JSON.stringify(json_temp)
       )
-      document.querySelector("li[data-id='" + todoID + "']").innerHTML = '<a href="#" data-toggle="modal" data-target="#todoModal">' + todoTitle + '</a> <a href="#" class="btn btn-sm btn-danger m-1 delete">Delete</a>'
+      // delete the old version of the existing todo in case the priority has changed
+      document.querySelector("li[data-id='" + todoID + "']").remove()
+      // add the updated version of the todo to the page
+      newTodo(todoTitle, todoDesc, todoID, todoPriority)
+      // The below line was added for the modal update button functionality to update the title 
+      // but is no longer needed as we need to call newToDo in case the priority is changed
+      // which also updates the title
+      // document.querySelector("li[data-id='" + todoID + "']").innerHTML = '<a href="#" data-toggle="modal" data-target="#todoModal">' + todoTitle + '</a> <a href="#" class="btn btn-sm btn-danger m-1 delete">Delete</a>'
       registerEventListeners()
       $('#todoModal').modal('hide')
     }
 
-    function storeTodoLocal(todoTitle, todoDesc, todoDate) {
+    function storeTodoLocal(todoTitle, todoDesc, todoDate, todoPriority) {
       
       // retrieve and parse existing JSON from localstorage
       var json_temp = JSON.parse( localStorage.getItem('json_data') );
@@ -170,6 +213,7 @@
         "title": todoTitle,
         "date": todoDate,
         "description": todoDesc,
+        "priority": todoPriority,
         "completed": false
       });
 
